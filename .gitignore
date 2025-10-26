@@ -1,0 +1,75 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Poetry
+poetry.lock
+.cache/
+dist/
+build/
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# Pydantic settings (env files)
+.env.*
+.env
+
+# VS Code / Editor folders
+.vscode/
+.idea/
+
+# Pytest / coverage / test-related
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Mypy / linting
+.mypy_cache/
+.dmypy.json
+ruff_cache/
+
+# Docker
+**/__pycache__/
+*.log
+docker-compose.override.yml
+*.pid
+
+# Logs
+*.log
+*.pid
+*.gz
+
+# MacOS / Linux / Windows trash
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Coverage reports
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+
+# Profiling data
+.prof
+
+# Pyre type checker
+.pyre/
+
+# Bandit security reports
+bandit.json
+
+tools

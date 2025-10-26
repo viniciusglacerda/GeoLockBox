@@ -1,0 +1,43 @@
+# Ignore arquivos de cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar arquivos de build e dist
+build/
+dist/
+*.egg-info/
+
+# Ignorar ambiente virtual
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# Ignorar arquivos de configuração do editor
+.vscode/
+.idea/
+
+# Ignorar arquivos de log
+*.log
+
+# Ignorar arquivos de teste
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ignorar arquivos de controle de versão
+.git
+.gitignore
+
+# Ignorar arquivos temporários do sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar arquivos de configuração do Docker Compose override
+docker-compose.override.yml
+
+# Ignorar arquivos de notebooks e checkpoints
+.ipynb_checkpoints/
