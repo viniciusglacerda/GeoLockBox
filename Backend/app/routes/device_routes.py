@@ -1,5 +1,3 @@
-# device_routes.py
-
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
@@ -8,19 +6,17 @@ from app.core.database import get_db
 from app.models.device import Device
 from app.schemas.device_schema import DeviceCreate, DeviceUpdate, DeviceResponse
 
-router = APIRouter(prefix="/devices", tags=["Devices"])
-
-# --- CRUD Devices ---
+router = APIRouter()
 
 # Listar todos os dispositivos
-@router.get("/", response_model=List[DeviceResponse])
+@router.get("", response_model=List[DeviceResponse])
 def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     devices = db.query(Device).offset(skip).limit(limit).all()
     return devices
 
 
 # Criar novo dispositivo
-@router.post("/", response_model=DeviceResponse)
+@router.post("", response_model=DeviceResponse)
 def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
     db_device = Device(**device.dict())
     db.add(db_device)

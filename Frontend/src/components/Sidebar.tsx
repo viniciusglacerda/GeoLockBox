@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 const Sidebar = () => {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Package, label: "Dispositivos", path: "/devices" },
+    { icon: Package, label: "Entrega & Geofencing", path: "/geofencing-settings" },
     { icon: Settings, label: "Configurações", path: "/settings" },
   ];
 

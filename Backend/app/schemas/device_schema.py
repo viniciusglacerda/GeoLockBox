@@ -32,7 +32,7 @@ class DeviceInDB(DeviceBase):
     last_update: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DeviceResponse(DeviceInDB):

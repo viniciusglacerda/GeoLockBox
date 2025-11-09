@@ -1,4 +1,5 @@
-import { MapPin } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
 
 interface Device {
   id: string;
@@ -13,48 +14,42 @@ const devices: Device[] = [
   { id: "BOX-003", lat: -23.5705, lng: -46.6533, status: "inactive" },
 ];
 
+const createDeviceIcon = (status: "active" | "inactive") => {
+  const color = status === "active" ? "green" : "gray";
+
+  return L.divIcon({
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;background-color:${color};border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.3);">
+             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/></svg>
+           </div>`,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+  });
+};
+
 const MapView = () => {
   return (
-    <div className="relative w-full h-[500px] bg-secondary rounded-lg overflow-hidden shadow-md">
-      {/* Mock map background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-secondary to-muted" />
-      
-      {/* Grid pattern for map effect */}
-      <div className="absolute inset-0 opacity-10" style={{
-        backgroundImage: `linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)`,
-        backgroundSize: '50px 50px'
-      }} />
+    <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-md">
+      <MapContainer center={[-23.5505, -46.6333]} zoom={13} scrollWheelZoom={true} className="w-full h-full">
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        />
 
-      {/* Device markers */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full h-full">
-          {devices.map((device, index) => (
-            <div
-              key={device.id}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
-              style={{
-                left: `${30 + index * 20}%`,
-                top: `${40 + index * 10}%`,
-              }}
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${
-                device.status === "active" ? "bg-success" : "bg-muted"
-              }`}>
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
-              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-card px-3 py-1 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                <p className="text-xs font-medium text-foreground">{device.id}</p>
-                <p className="text-xs text-muted-foreground">{device.status === "active" ? "Ativo" : "Inativo"}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Map controls overlay */}
-      <div className="absolute bottom-4 right-4 bg-card rounded-lg shadow-lg p-2">
-        <p className="text-xs text-muted-foreground">Visualização do Mapa</p>
-      </div>
+        {devices.map((device) => (
+          <Marker
+            key={device.id}
+            position={[device.lat, device.lng]}
+            icon={createDeviceIcon(device.status)}
+          >
+            <Popup>
+              <strong>{device.id}</strong>
+              <br />
+              Status: {device.status === "active" ? "Ativo" : "Inativo"}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </div>
   );
 };

@@ -30,7 +30,7 @@ const Login = () => {
               <Lock className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold text-foreground">GeoLockBox</h1>
-            <p className="text-muted-foreground mt-2">Sistema de Monitoramento IoT</p>
+            <p className="text-muted-foreground mt-2">Sistema de Monitoramento</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -68,11 +68,11 @@ const Login = () => {
               Entrar
             </Button>
 
-            <div className="text-center">
+            {/* <div className="text-center">
               <a href="#" className="text-sm text-primary hover:underline">
                 Esqueci minha senha
               </a>
-            </div>
+            </div> */}
           </form>
         </div>
       </div>
