@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -14,165 +14,230 @@ import {
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import ReactDOMServer from "react-dom/server";
 
+import { mockService, Device, Delivery, DeviceLog } from "@/services/mockService";
+
 const DeviceDetail = () => {
-  const { id } = useParams();
-  const [isLocked, setIsLocked] = useState(true);
+  const { id } = useParams<{ id: string }>();
 
-  // Estado de logs
-  const [eventLogs, setEventLogs] = useState([
-    { event: "Trava bloqueada", date: "2024-01-20 14:30", result: "Sucesso" },
-    { event: "Atualização de localização", date: "2024-01-20 14:25", result: "Sucesso" },
-    { event: "Trava desbloqueada", date: "2024-01-20 14:00", result: "Sucesso" },
-    { event: "Alerta de geofencing", date: "2024-01-20 13:45", result: "Alerta" },
-  ]);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [delivery, setDelivery] = useState<Delivery | null>(null);
+  const [eventLogs, setEventLogs] = useState<DeviceLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const deviceInfo = {
-    id: id || "BOX-001",
-    status: isLocked ? "Bloqueado" : "Desbloqueado",
-    location: "São Paulo, SP",
-    latitude: -23.5505,
-    longitude: -46.6333,
-    lastUpdate: "2 min atrás",
-    geofenceRadius: 50,
-  };
+  const isLocked = device?.status === "locked";
 
   const addLog = (event: string, result: string) => {
     const date = new Date().toLocaleString();
     setEventLogs((prev) => [{ event, date, result }, ...prev]);
   };
 
-  const handleLock = () => {
-    setIsLocked(true);
-    toast.success("Trava bloqueada com sucesso!");
-    addLog("Trava bloqueada", "Sucesso");
+  // --- Buscar device + delivery ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (!id) return;
+
+        const dev = await mockService.getDevice(id);
+        setDevice(dev);
+
+        if (dev.delivery_id) {
+          const del = await mockService.getDelivery(dev.delivery_id);
+          setDelivery(del);
+        }
+      } catch (err) {
+        toast.error("Erro ao buscar informações do dispositivo.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  // --- Handlers de lock/unlock/refresh ---
+  const handleLock = async () => {
+    if (!device) return;
+    try {
+      await mockService.sendTelemetry(device.id, {
+        latitude: device.latitude,
+        longitude: device.longitude,
+      });
+
+      setDevice({ ...device, status: "locked" });
+      toast.success("Trava bloqueada com sucesso!");
+      addLog("Trava bloqueada", "Sucesso");
+    } catch {
+      toast.error("Falha ao bloquear trava.");
+      addLog("Trava bloqueada", "Erro");
+    }
   };
 
-  const handleUnlock = () => {
-    setIsLocked(false);
-    toast.success("Trava desbloqueada com sucesso!");
-    addLog("Trava desbloqueada", "Sucesso");
+  const handleUnlock = async () => {
+    if (!device) return;
+    try {
+      await mockService.sendTelemetry(device.id, {
+        latitude: device.latitude,
+        longitude: device.longitude,
+      });
+
+      setDevice({ ...device, status: "unlocked" });
+      toast.success("Trava desbloqueada com sucesso!");
+      addLog("Trava desbloqueada", "Sucesso");
+    } catch {
+      toast.error("Falha ao desbloquear trava.");
+      addLog("Trava desbloqueada", "Erro");
+    }
   };
 
-  const handleRefresh = () => {
-    toast.success("Dispositivo atualizado!");
-    addLog("Atualização de localização", "Sucesso");
+  const handleRefresh = async () => {
+    if (!device) return;
+
+    try {
+      const updated = await mockService.getDevice(device.id);
+      setDevice(updated);
+
+      if (updated.delivery_id) {
+        const del = await mockService.getDelivery(updated.delivery_id);
+        setDelivery(del);
+      }
+
+      toast.success("Dispositivo atualizado!");
+      addLog("Atualização de localização", "Sucesso");
+    } catch {
+      toast.error("Falha ao atualizar dispositivo.");
+      addLog("Atualização de localização", "Erro");
+    }
   };
 
-  // Ícone do Leaflet com React
+  // Ícone personalizado no mapa
   const lucideIcon = new L.DivIcon({
     html: ReactDOMServer.renderToString(
       <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg`}
+        className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
         style={{ backgroundColor: isLocked ? "#F87171" : "#34D399" }}
       >
         <MapPin className="w-6 h-6" style={{ color: "white" }} />
       </div>
     ),
-    className: "",
     iconSize: [40, 40],
     iconAnchor: [20, 40],
   });
 
   const FitMapView = () => {
     const map = useMap();
-    map.setView([deviceInfo.latitude, deviceInfo.longitude], 16);
+    if (device) map.setView([device.latitude, device.longitude], 16);
     return null;
   };
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Carregando...</p>
+      </div>
+    );
+
+  if (!device)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-500">Dispositivo não encontrado.</p>
+      </div>
+    );
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="bg-primary rounded-t-lg p-6 shadow-md">
             <h1 className="text-3xl font-bold text-primary-foreground">
-              Caixa #{deviceInfo.id}
+              Caixa #{device.id}
             </h1>
           </div>
 
+          {/* Conteúdo */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+
             {/* Informações principais */}
             <div className="bg-card rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-4">
-                Informações Principais
-              </h2>
+              <h2 className="text-xl font-semibold mb-4">Informações Principais</h2>
+
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Status da Trava</span>
+                <div className="flex justify-between py-2 border-b">
+                  <span>Status da Trava</span>
                   <span
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${isLocked
-                      ? "bg-red-100 text-red-600"
-                      : "bg-green-100 text-green-600"
-                      }`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      isLocked ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+                    }`}
                   >
-                    {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                    {deviceInfo.status}
+                    {isLocked ? "Bloqueado" : "Desbloqueado"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Localização</span>
-                  <span className="text-foreground font-medium">{deviceInfo.location}</span>
+
+                <div className="flex justify-between py-2 border-b">
+                  <span>Latitude</span>
+                  <span className="font-mono">{device.latitude}</span>
                 </div>
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Latitude</span>
-                  <span className="text-foreground font-mono">{deviceInfo.latitude}</span>
+
+                <div className="flex justify-between py-2 border-b">
+                  <span>Longitude</span>
+                  <span className="font-mono">{device.longitude}</span>
                 </div>
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">Longitude</span>
-                  <span className="text-foreground font-mono">{deviceInfo.longitude}</span>
+
+                <div className="flex justify-between py-2">
+                  <span>Bateria</span>
+                  <span>{device.battery_level}%</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-muted-foreground">Última Atualização</span>
-                  <span className="text-foreground">{deviceInfo.lastUpdate}</span>
+
+                <div className="flex justify-between py-2">
+                  <span>Entrega vinculada</span>
+                  <span>{delivery ? `#${delivery.tracking_number}` : "Nenhuma"}</span>
                 </div>
               </div>
             </div>
 
             {/* Mapa */}
             <div className="bg-card rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-4">
-                Localização e Geofencing
-              </h2>
+              <h2 className="text-xl font-semibold mb-4">Localização e Geofencing</h2>
+
               <MapContainer
-                center={[deviceInfo.latitude, deviceInfo.longitude]}
+                center={[device.latitude, device.longitude]}
                 zoom={16}
                 scrollWheelZoom={true}
                 className="w-full h-64 rounded-lg"
               >
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-                />
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
                 <FitMapView />
-                <Marker position={[deviceInfo.latitude, deviceInfo.longitude]} icon={lucideIcon}>
+
+                <Marker position={[device.latitude, device.longitude]} icon={lucideIcon}>
                   <Popup>
-                    {deviceInfo.id} - {deviceInfo.status}
+                    {device.name} - {isLocked ? "Bloqueado" : "Desbloqueado"}
                   </Popup>
                 </Marker>
-                <Circle
-                  center={[deviceInfo.latitude, deviceInfo.longitude]}
-                  radius={deviceInfo.geofenceRadius}
-                  pathOptions={{ color: "blue", fillColor: "blue", fillOpacity: 0.1 }}
-                />
+
+                {/* Geofence vindo da Delivery */}
+                {delivery && (
+                  <Circle
+                    center={[delivery.dest_lat ?? 0, delivery.dest_lon ?? 0]}
+                    radius={delivery.geofence_radius}
+                  />
+                )}
               </MapContainer>
+
               <p className="text-sm text-muted-foreground text-center mt-2">
-                Círculo de geofencing ativo ({deviceInfo.geofenceRadius}m)
+                Raio do geofence: {delivery?.geofence_radius ?? 0}m
               </p>
             </div>
           </div>
 
-          {/* Botões de ação */}
+          {/* Ações */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <Button
               onClick={handleLock}
-              className={`w-full text-white font-medium py-3 rounded-lg shadow-md ${isLocked ? "bg-red-500 hover:bg-red-600" : "opacity-50 cursor-not-allowed"
-                }`}
               disabled={isLocked}
+              className="bg-red-500 hover:bg-red-600 text-white"
             >
               <Lock className="w-5 h-5 mr-2" />
               Bloquear
@@ -180,48 +245,45 @@ const DeviceDetail = () => {
 
             <Button
               onClick={handleUnlock}
-              className={`w-full text-white font-medium py-3 rounded-lg shadow-md ${!isLocked ? "bg-green-500 hover:bg-green-600" : "opacity-50 cursor-not-allowed"
-                }`}
               disabled={!isLocked}
+              className="bg-green-500 hover:bg-green-600 text-white"
             >
               <Unlock className="w-5 h-5 mr-2" />
               Desbloquear
             </Button>
 
-            <Button
-              onClick={handleRefresh}
-              className="w-full text-white font-medium py-3 rounded-lg shadow-md bg-blue-500 hover:bg-blue-600"
-            >
+            <Button onClick={handleRefresh} className="bg-blue-500 hover:bg-blue-600 text-white">
               <RefreshCw className="w-5 h-5 mr-2" />
               Atualizar
             </Button>
           </div>
 
-          {/* Logs de eventos */}
+          {/* Logs */}
           <div className="bg-card rounded-lg shadow-md p-6 mt-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">
-              Logs de Eventos Recentes
-            </h2>
+            <h2 className="text-xl font-semibold mb-4">Logs Recentes</h2>
+
             <div className="max-h-64 overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Evento</TableHead>
-                    <TableHead>Data e Hora</TableHead>
+                    <TableHead>Data</TableHead>
                     <TableHead>Resultado</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
-                  {eventLogs.map((log, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{log.event}</TableCell>
-                      <TableCell className="text-muted-foreground">{log.date}</TableCell>
+                  {eventLogs.map((log, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{log.event}</TableCell>
+                      <TableCell>{log.date}</TableCell>
                       <TableCell>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${log.result === "Sucesso"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-600"
-                            }`}
+                          className={`px-2 py-1 rounded text-xs ${
+                            log.result === "Sucesso"
+                              ? "bg-green-100 text-green-600"
+                              : "bg-yellow-100 text-yellow-600"
+                          }`}
                         >
                           {log.result}
                         </span>

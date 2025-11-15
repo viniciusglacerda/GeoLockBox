@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Truck, MapPin, Ruler, Unlock, X } from "lucide-react";
+import { Truck, MapPin, Ruler, Unlock, X, LogOut } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 type Delivery = {
     id: string;
@@ -58,10 +59,17 @@ const mockDeliveries: Delivery[] = [
 const DeliveryPage: React.FC = () => {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         setDeliveries(mockDeliveries);
     }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        navigate("/");
+    };
 
     const getStatusColor = (status: Delivery["status"]) => {
         switch (status) {
@@ -88,10 +96,23 @@ const DeliveryPage: React.FC = () => {
 
     return (
         <div className="p-6 max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
-                <Truck className="text-blue-600" /> Painel do Entregador
-            </h1>
+            {/* Cabeçalho com botão de sair */}
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <Truck className="text-blue-600" /> Painel do Entregador
+                </h1>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Sair
+                </Button>
+            </div>
 
+            {/* Lista de entregas */}
             <div className="space-y-4">
                 {deliveries.map((delivery) => (
                     <div
@@ -155,8 +176,7 @@ const DeliveryPage: React.FC = () => {
 
                         <div className="px-4 py-3 text-sm text-gray-700 space-y-1 border-b">
                             <p>
-                                <MapPin className="inline w-4 h-4 mr-1" />{" "}
-                                {selectedDelivery.destination}
+                                <MapPin className="inline w-4 h-4 mr-1" /> {selectedDelivery.destination}
                             </p>
                             <p>
                                 <Ruler className="inline w-4 h-4 mr-1" /> Distância:{" "}
@@ -180,19 +200,13 @@ const DeliveryPage: React.FC = () => {
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
                                 />
                                 <Marker
-                                    position={[
-                                        selectedDelivery.dest_lat,
-                                        selectedDelivery.dest_lon,
-                                    ]}
+                                    position={[selectedDelivery.dest_lat, selectedDelivery.dest_lon]}
                                     icon={truckIcon}
                                 >
                                     <Popup>{selectedDelivery.destination}</Popup>
                                 </Marker>
                                 <Circle
-                                    center={[
-                                        selectedDelivery.dest_lat,
-                                        selectedDelivery.dest_lon,
-                                    ]}
+                                    center={[selectedDelivery.dest_lat, selectedDelivery.dest_lon]}
                                     radius={selectedDelivery.geofence_radius}
                                     pathOptions={{
                                         color:

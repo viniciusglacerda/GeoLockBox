@@ -11,6 +11,7 @@ import GeofencingConfigPage from "./pages/GeofencingConfigPage";
 import SettingsPage from "./pages/Settings";
 import TrackPage from "./pages/TrackPage";
 import DeliveryPage from "./pages/DeliveryPage";
+import DeliveriesSettingsPage from "./pages/DeliveriesSettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -22,9 +23,10 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/deliveries-settings" element={<DeliveriesSettingsPage />} />
           <Route path="/deliveries" element={<DeliveryPage />} />
           <Route path="/track" element={<TrackPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/geofencing-settings" element={<GeofencingConfigPage />} />
           <Route path="/device/:id" element={<DeviceDetail />} />
           <Route path="/settings" element={<SettingsPage />} />

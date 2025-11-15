@@ -5,19 +5,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { mockService } from "@/services/mockService";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      toast.success("Login realizado com sucesso!");
-      navigate("/dashboard");
-    } else {
+
+    if (!email || !password) {
       toast.error("Por favor, preencha todos os campos");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await mockService.login({
+        username: email,
+        password: password,
+      });
+
+      if (response && response.token) {
+        toast.success(`Bem-vindo, ${response.user.username}!`);
+
+        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("token", response.token);
+
+        if (response.user.role === "admin") navigate("/dashboard");
+        else navigate("/deliveries");
+      } else {
+        toast.error("Usuário ou senha inválidos");
+      }
+    } catch (error) {
+      toast.error("Erro ao realizar login");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,7 +57,9 @@ const Login = () => {
               <Lock className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold text-foreground">GeoLockBox</h1>
-            <p className="text-muted-foreground mt-2">Sistema de Monitoramento</p>
+            <p className="text-muted-foreground mt-2">
+              Sistema de Monitoramento
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
@@ -64,15 +93,9 @@ const Login = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
-
-            {/* <div className="text-center">
-              <a href="#" className="text-sm text-primary hover:underline">
-                Esqueci minha senha
-              </a>
-            </div> */}
           </form>
         </div>
       </div>

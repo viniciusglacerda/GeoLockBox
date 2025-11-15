@@ -125,7 +125,7 @@ const TrackPage: React.FC = () => {
           {loading ? "Buscando..." : "Localizar"}
         </button>
 
-        {/* botão de exemplo - apenas para demo/local */}
+        botão de exemplo - apenas para demo/local
         <button
           type="button"
           onClick={handleShowExample}
@@ -207,11 +207,11 @@ const TrackPage: React.FC = () => {
         </div>
       )}
 
-      {!data && (
+      {/* {!data && (
         <div className="mt-4 text-sm text-gray-500">
           Dica: clique <strong>Mostrar exemplo</strong> para visualizar um rastreamento de demonstração.
         </div>
-      )}
+      )} */}
     </div>
   );
 };
