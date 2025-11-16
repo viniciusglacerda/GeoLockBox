@@ -1,61 +1,69 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
 from typing import List
+from fastapi import Depends, APIRouter
+from sqlmodel import select, Session
 
-from app.core.database import get_db
+from app.core.database import get_session
+from app.utils.helpers import generate_id, get_or_404
 from app.models.device import Device
-from app.schemas.device_schema import DeviceCreate, DeviceUpdate, DeviceResponse
+from app.schemas.device_schema import *
+
 
 router = APIRouter()
 
-# Listar todos os dispositivos
-@router.get("", response_model=List[DeviceResponse])
-def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    devices = db.query(Device).offset(skip).limit(limit).all()
-    return devices
 
-
-# Criar novo dispositivo
-@router.post("", response_model=DeviceResponse)
-def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
-    db_device = Device(**device.dict())
-    db.add(db_device)
-    db.commit()
-    db.refresh(db_device)
+@router.post("", response_model=DeviceRead, status_code=201)
+def create_device(device: DeviceCreate, session: Session = Depends(get_session)):
+    device_id = device.id or generate_id("BOX")
+    db_device = Device(id=device_id, **device.model_dump(exclude={"id"}, exclude_none=True))
+    session.add(db_device)
+    session.commit()
+    session.refresh(db_device)
     return db_device
 
 
-# Buscar dispositivo por ID
-@router.get("/{device_id}", response_model=DeviceResponse)
-def get_device(device_id: int, db: Session = Depends(get_db)):
-    db_device = db.query(Device).filter(Device.id == device_id).first()
-    if not db_device:
-        raise HTTPException(status_code=404, detail="Device not found")
-    return db_device
+@router.get("", response_model=List[DeviceRead])
+def list_devices(session: Session = Depends(get_session)):
+    return session.exec(select(Device)).all()
 
 
-# Atualizar dispositivo
-@router.put("/{device_id}", response_model=DeviceResponse)
-def update_device(device_id: int, device_update: DeviceUpdate, db: Session = Depends(get_db)):
-    db_device = db.query(Device).filter(Device.id == device_id).first()
-    if not db_device:
-        raise HTTPException(status_code=404, detail="Device not found")
-    
-    for key, value in device_update.dict(exclude_unset=True).items():
-        setattr(db_device, key, value)
-    
-    db.commit()
-    db.refresh(db_device)
-    return db_device
+@router.get("/{device_id}", response_model=DeviceRead)
+def get_device(device_id: str, session: Session = Depends(get_session)):
+    return get_or_404(session, Device, device_id)
 
 
-# Deletar dispositivo
-@router.delete("/{device_id}", response_model=dict)
-def delete_device(device_id: int, db: Session = Depends(get_db)):
-    db_device = db.query(Device).filter(Device.id == device_id).first()
-    if not db_device:
-        raise HTTPException(status_code=404, detail="Device not found")
-    
-    db.delete(db_device)
-    db.commit()
-    return {"message": f"Device {device_id} deleted successfully"}
+@router.put("/{device_id}", response_model=DeviceRead)
+def put_device(device_id: str, device: DeviceCreate, session: Session = Depends(get_session)):
+    existing = session.get(Device, device_id)
+    payload = device.model_dump(exclude_unset=True)
+    if existing:
+        for k, v in payload.items():
+            if k != "id":
+                setattr(existing, k, v)
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        return existing
+    new = Device(id=device_id, **payload)
+    session.add(new)
+    session.commit()
+    session.refresh(new)
+    return new
+
+
+@router.patch("/{device_id}", response_model=DeviceRead)
+def patch_device(device_id: str, device: DeviceUpdate, session: Session = Depends(get_session)):
+    existing = get_or_404(session, Device, device_id)
+    for k, v in device.model_dump(exclude_unset=True).items():
+        setattr(existing, k, v)
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return existing
+
+
+@router.delete("/{device_id}", status_code=204)
+def delete_device(device_id: str, session: Session = Depends(get_session)):
+    existing = get_or_404(session, Device, device_id)
+    session.delete(existing)
+    session.commit()
+    return

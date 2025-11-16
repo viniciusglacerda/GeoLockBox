@@ -1,16 +1,17 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
-from datetime import datetime, timezone
-from app.core.database import Base
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy import JSON
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 
-class Log(Base):
-    __tablename__ = "logs"
+class Log(SQLModel, table=True):
+    id: str = Field(default=None, primary_key=True)
 
-    id = Column(Integer, primary_key=True, index=True)
-    event_type = Column(String, nullable=False)
-    source = Column(String, nullable=True)
-    message = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    level: Optional[str] = None
+    message: Optional[str] = None
+    timestamp: Optional[datetime] = None
 
-    def __repr__(self):
-        return f"<Log(id={self.id}, type={self.event_type}, source={self.source})>"
+    extra: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON)
+    )

@@ -1,27 +1,31 @@
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from sqlmodel import SQLModel
+from pydantic import BaseModel
 from typing import Optional
 
-class UserBase(BaseModel):
-    name: str = Field(..., example="João Silva")
-    email: EmailStr = Field(..., example="joao.silva@email.com")
-    role: Optional[str] = Field(default="receiver", example="sender")
+
+class UserBase(SQLModel):
+    username: str
+    password: str
+    name: Optional[str] = None
+    role: Optional[str] = None
+    email: Optional[str] = None
+
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, example="senhaSegura123")
+    id: Optional[str] = None
 
-class UserLogin(BaseModel):
-    email: EmailStr = Field(..., example="joao.silva@email.com")
-    password: str = Field(..., min_length=6, example="senhaSegura123")
 
 class UserRead(UserBase):
-    id: int
-    created_at: datetime
+    id: str
 
-    class Config:
-        from_attributes = True
 
-# --- Schema de token ---
+class UserUpdate(SQLModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    name: Optional[str] = None
+    role: Optional[str] = None
+    email: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

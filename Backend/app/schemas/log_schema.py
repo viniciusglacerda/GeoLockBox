@@ -1,21 +1,25 @@
-from pydantic import BaseModel, Field
+from sqlmodel import SQLModel
+from typing import Optional, Dict, Any
 from datetime import datetime
-from typing import Optional
 
 
-class LogBase(BaseModel):
-    event_type: str = Field(..., description="Tipo do evento (info, warning, error)")
-    message: str = Field(..., description="Mensagem descritiva do log")
-    source: Optional[str] = Field(None, description="Origem do log (ex: device_id, módulo, API, etc)")
+class LogBase(SQLModel):
+    level: Optional[str] = None
+    message: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    extra: Optional[Dict[str, Any]] = None
 
 
 class LogCreate(LogBase):
-    pass
+    id: Optional[str] = None
 
 
-class LogResponse(LogBase):
-    id: int
-    created_at: datetime
+class LogRead(LogBase):
+    id: str
 
-    class Config:
-        from_attributes = True
+
+class LogUpdate(SQLModel):
+    level: Optional[str] = None
+    message: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    extra: Optional[Dict[str, Any]] = None

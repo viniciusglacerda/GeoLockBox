@@ -1,7 +1,5 @@
 fastapi
 uvicorn
-sqlalchemy
-pydantic
 python-jose[cryptography]
 passlib
 bcrypt
@@ -10,4 +8,4 @@ geopy
 python-dotenv
 pydantic-settings
 python-multipart
-pydantic[email]
+sqlmodel

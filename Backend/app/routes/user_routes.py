@@ -1,62 +1,71 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from datetime import timedelta, datetime
+from typing import List
+from fastapi import Depends, APIRouter
+from sqlmodel import select, Session
 
-from app.models.user import User
-from app.schemas.user_schema import UserCreate, UserLogin, UserRead
-from app.core.database import SessionLocal, engine, get_db
-from app.utils.security import get_password_hash, verify_password, create_access_token, oauth2_scheme
+from app.core.database import get_session
+from app.utils.helpers import generate_id, get_or_404
+from app.models.user import *
+from app.schemas.user_schema import *
+
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserRead)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    hashed_password = get_password_hash(user.password)
-    new_user = User(
-        name=user.name,
-        email=user.email,
-        password_hash=hashed_password,
-        role=user.role
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+@router.post("", response_model=UserRead, status_code=201)
+def create_user(user: UserCreate, session: Session = Depends(get_session)):
+    user_id = user.id or generate_id("USR")
+    db_user = User(id=user_id, **user.model_dump(exclude={"id"}, exclude_none=True))
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
 
 
-@router.post("/login")
-def login_user(user: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
-    if not verify_password(user.password, db_user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
-        )
-    
-    access_token_expires = timedelta(hours=8)
-    access_token = create_access_token(
-        data={"sub": db_user.email, "role": db_user.role},
-        expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+@router.get("", response_model=List[UserRead])
+def list_users(session: Session = Depends(get_session)):
+    users = session.exec(select(User)).all()
+    return users
 
 
-@router.get("/me", response_model=UserRead)
-def read_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    from app.utils.security import get_current_user
-    current_user = get_current_user(token, db)
-    return current_user
+@router.get("/{user_id}", response_model=UserRead)
+def get_user(user_id: str, session: Session = Depends(get_session)):
+    return get_or_404(session, User, user_id)
+
+
+@router.put("/{user_id}", response_model=UserRead)
+def put_user(user_id: str, user: UserCreate, session: Session = Depends(get_session)):
+    existing = session.get(User, user_id)
+    payload = user.model_dump(exclude_unset=True)
+    if existing:
+        for k, v in payload.items():
+            if k != "id":
+                setattr(existing, k, v)
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        return existing
+
+    new = User(id=user_id, **payload)
+    session.add(new)
+    session.commit()
+    session.refresh(new)
+    return new
+
+
+@router.patch("/{user_id}", response_model=UserRead)
+def patch_user(user_id: str, user: UserUpdate, session: Session = Depends(get_session)):
+    existing = get_or_404(session, User, user_id)
+    for k, v in user.model_dump(exclude_unset=True).items():
+        setattr(existing, k, v)
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return existing
+
+
+@router.delete("/{user_id}", status_code=204)
+def delete_user(user_id: str, session: Session = Depends(get_session)):
+    existing = get_or_404(session, User, user_id)
+    session.delete(existing)
+    session.commit()
+    return

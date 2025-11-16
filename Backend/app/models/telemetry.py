@@ -3,13 +3,12 @@ from typing import Optional
 from datetime import datetime
 
 
-class Device(SQLModel, table=True):
+class Telemetry(SQLModel, table=True):
     id: str = Field(default=None, primary_key=True)
-    name: Optional[str] = None
-    status: Optional[str] = None
+
+    device_id: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    speed: Optional[float] = None
     battery_level: Optional[int] = None
-    last_update: Optional[datetime] = None
-    active: Optional[bool] = None
-    assigned_user_id: Optional[str] = None
+    timestamp: Optional[datetime] = None

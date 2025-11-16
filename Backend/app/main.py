@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.routes.user_routes import router as user_router
-from app.routes.device_routes import router as device_router
-from app.routes.auth_routes import router as auth_router
+from app.routes.routes import routes
 
 app = FastAPI(
     title="GeoLockBox API",
@@ -25,10 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-app.include_router(user_router, prefix="/users", tags=["Users"])
-app.include_router(device_router, prefix="/devices", tags=["Devices"])
-app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(routes)
 
 @app.get("/")
 def read_root():
