@@ -26,32 +26,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "/leaflet/marker-shadow.png",
 });
 
-const mapPinIcon = new L.DivIcon({
-  html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;background-color:grey;border-radius:50%;box-shadow:0 0 6px rgba(0,0,0,0.4);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
-      <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5
-        c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5
-        14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
-    </svg>
-  </div>`,
-  className: "",
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-});
-
-const packageIcon = new L.DivIcon({
-  html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;background-color:grey;border-radius:50%;box-shadow:0 0 6px rgba(0,0,0,0.4);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
-      <path d="m7.5 4.27 4.5-2.25 4.5 2.25"></path>
-      <path d="M3 8l9 4 9-4"></path>
-      <path d="M3 8v8l9 4 9-4V8"></path>
-      <path d="M12 12v8"></path>
-    </svg>
-  </div>`,
-  className: "",
-  iconSize: [30, 30],
-  iconAnchor: [15, 30],
-});
+const mapPinIcon = new L.DivIcon({ });
+const packageIcon = new L.DivIcon({ });
 
 const DeliveryForm = () => {
   const navigate = useNavigate();
@@ -62,9 +38,9 @@ const DeliveryForm = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [linkedDevice, setLinkedDevice] = useState<Device | null>(null);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
 
-  const [formData, setFormData] = useState<Delivery>({
-    id: "",
+  const [formData, setFormData] = useState<Partial<Delivery>>({
     order_number: "",
     receiver_name: "",
     address_street: "",
@@ -77,8 +53,6 @@ const DeliveryForm = () => {
     dest_lat: -23.5505,
     dest_lon: -46.6333,
   });
-
-  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -124,7 +98,7 @@ const DeliveryForm = () => {
       formData.address_zip,
     ]
       .filter(Boolean)
-      .map((v) => v.trim())
+      .map((v) => v?.trim())
       .join(", ");
 
     try {
@@ -155,16 +129,16 @@ const DeliveryForm = () => {
   };
 
   const handleDeviceChange = (deviceId: string) => {
-    setFormData({ ...formData, device_id: deviceId });
+    setFormData((prev) => ({ ...prev, device_id: deviceId }));
     const device = devices.find((d) => d.id === deviceId) || null;
     setLinkedDevice(device);
 
     if (device?.geofence?.center) {
       setFormData((prev) => ({
         ...prev,
-        dest_lat: device.geofence?.center[0] || 0,
-        dest_lon: device.geofence?.center[1] || 0,
-        geofence_radius: device.geofence?.radius_m || 0,
+        dest_lat: device.geofence?.center[0] || prev.dest_lat,
+        dest_lon: device.geofence?.center[1] || prev.dest_lon,
+        geofence_radius: device.geofence?.radius_m || prev.geofence_radius,
       }));
     }
   };
@@ -196,6 +170,14 @@ const DeliveryForm = () => {
           <div className="bg-card rounded-lg shadow-md p-8">
             <h1 className="text-2xl font-bold mb-6">{isEdit ? "Editar Entrega" : "Nova Entrega"}</h1>
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <Label>Número do Pedido *</Label>
+                <Input
+                  value={formData.order_number}
+                  onChange={(e) => setFormData({ ...formData, order_number: e.target.value })}
+                />
+              </div>
+
               <div>
                 <Label>Nome do Cliente *</Label>
                 <Input
@@ -231,6 +213,13 @@ const DeliveryForm = () => {
                   <Input
                     value={formData.address_state}
                     onChange={(e) => setFormData({ ...formData, address_state: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>CEP</Label>
+                  <Input
+                    value={formData.address_zip}
+                    onChange={(e) => setFormData({ ...formData, address_zip: e.target.value })}
                   />
                 </div>
               </div>
@@ -288,22 +277,22 @@ const DeliveryForm = () => {
                   <MapPin className="w-4 h-4" /> Mapa da Entrega
                 </h2>
                 <div className="h-96 rounded overflow-hidden border">
-                  <MapContainer center={[formData.dest_lat!, formData.dest_lon!]} zoom={15} style={{ height: "100%", width: "100%" }}>
+                  <MapContainer center={[formData.dest_lat || -23.5505, formData.dest_lon || -46.6333]} zoom={15} style={{ height: "100%", width: "100%" }}>
                     <TileLayer
                       url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                       attribution='&copy; OpenStreetMap & CARTO'
                     />
-                    <Marker position={[formData.dest_lat!, formData.dest_lon!]} icon={mapPinIcon}>
+                    <Marker position={[formData.dest_lat || -23.5505, formData.dest_lon || -46.6333]} icon={mapPinIcon}>
                       <Popup>Endereço da entrega</Popup>
                     </Marker>
-                    <Circle center={[formData.dest_lat!, formData.dest_lon!]} radius={formData.geofence_radius!} />
+                    <Circle center={[formData.dest_lat || -23.5505, formData.dest_lon || -46.6333]} radius={formData.geofence_radius || 150} />
                     {linkedDevice?.latitude && linkedDevice?.longitude && (
                       <Marker position={[linkedDevice.latitude, linkedDevice.longitude]} icon={packageIcon}>
                         <Popup>Pacote ({linkedDevice.id})</Popup>
                       </Marker>
                     )}
                     {linkedDevice?.latitude && linkedDevice?.longitude && (
-                      <Polyline positions={[[formData.dest_lat!, formData.dest_lon!], [linkedDevice.latitude, linkedDevice.longitude]]} />
+                      <Polyline positions={[[formData.dest_lat || 0, formData.dest_lon || 0], [linkedDevice.latitude, linkedDevice.longitude]]} />
                     )}
                   </MapContainer>
                 </div>

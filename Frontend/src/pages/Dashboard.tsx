@@ -38,7 +38,7 @@ const Dashboard = () => {
   }, []);
 
   const totalDevices = devices.length;
-  const activeDevices = devices.filter((d) => d.status === "active").length;
+  const activeDevices = devices.filter((d) => d.status != "inactive").length;
   const unlockedDevices = devices.filter((d) => d.status === "unlocked").length;
   const geofenceAlerts = devices.filter(
     (d) => d.geofence && d.status === "alert"

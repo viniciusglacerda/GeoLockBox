@@ -3,7 +3,6 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Device } from "@/services/apiService";
 
-// Corrige ícones default do Leaflet
 delete (L.Icon.Default as any).prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "/leaflet/marker-icon-2x.png",
@@ -15,7 +14,6 @@ interface MapViewProps {
   devices: Device[];
 }
 
-// Gera ícone colorido por status
 const createDeviceIcon = (status: string) => {
   let color = "gray";
   if (status === "active") color = "green";
@@ -48,17 +46,13 @@ const createDeviceIcon = (status: string) => {
 };
 
 const MapView = ({ devices }: MapViewProps) => {
-  // Aceita devices que tenham OU geofence.center OU latitude/longitude
   const validDevices = devices.filter(
     (d) =>
       Array.isArray(d.geofence?.center) ||
       (typeof d.latitude === "number" && typeof d.longitude === "number")
   );
 
-  // Center do mapa:  
-  // - Se existir pelo menos 1 device válido → usa o 1º  
-  // - Se não → fallback para Brasília
-  const defaultCenter: [number, number] = [-15.78, -47.93];
+  const defaultCenter: [number, number] = [0, 0];
 
   const mapCenter =
     validDevices.length > 0
@@ -83,7 +77,6 @@ const MapView = ({ devices }: MapViewProps) => {
         />
 
         {validDevices.map((device) => {
-          // Prioridade: geofence.center → latitude/longitude
           const center: [number, number] = device.geofence?.center
             ? [device.geofence.center[0], device.geofence.center[1]]
             : [device.latitude!, device.longitude!];
