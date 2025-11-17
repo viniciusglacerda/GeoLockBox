@@ -12,8 +12,7 @@ import { NavLink } from "react-router-dom";
 const Sidebar = () => {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Package, label: "Gerenciamento de Entregas", path: "/deliveries-settings" },
-    { icon: MapPin, label: "Entregas & Geofencing", path: "/geofencing-settings" },
+    { icon: Package, label: "Gerenciamento de Entregas", path: "/deliveries" },
     { icon: Settings, label: "Configurações", path: "/settings" }
   ];
 
