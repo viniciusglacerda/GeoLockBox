@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, Plus, MapPin, User, Trash2 } from "lucide-react";
+import { Plus, MapPin, User, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { mockService } from "@/services/mockService";
+import { apiService } from "@/services/apiService";
 import { toast } from "sonner";
 
 interface Delivery {
@@ -36,7 +36,7 @@ const DeliveriesPage = () => {
 
   async function loadData() {
     try {
-      const data = await mockService.getDeliveries();
+      const data = await apiService.getDeliveries();
       setDeliveries(data);
     } catch (err) {
       toast.error("Erro ao carregar entregas");
@@ -53,7 +53,7 @@ const DeliveriesPage = () => {
     if (!confirmId) return;
 
     try {
-      await mockService.deleteDelivery(confirmId);
+      await apiService.deleteDelivery(confirmId);
       toast.success("Entrega excluída com sucesso!");
 
       setDeliveries((prev) => prev.filter((d) => d.id !== confirmId));
