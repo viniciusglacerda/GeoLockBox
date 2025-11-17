@@ -92,7 +92,7 @@ const MapView = ({ devices }: MapViewProps) => {
             <Marker
               key={device.id}
               position={center}
-              icon={createDeviceIcon(device.status)}
+              icon={createDeviceIcon(device.status || "")}
             >
               <Popup>
                 <strong>ID:</strong> {device.id} <br />
