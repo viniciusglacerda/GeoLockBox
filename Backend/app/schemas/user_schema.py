@@ -27,5 +27,6 @@ class UserUpdate(SQLModel):
     email: Optional[str] = None
 
 class Token(BaseModel):
+    user: UserBase
     access_token: str
     token_type: str = "bearer"
