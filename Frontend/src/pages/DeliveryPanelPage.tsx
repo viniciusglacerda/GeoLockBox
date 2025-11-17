@@ -56,7 +56,7 @@ const mockDeliveries: Delivery[] = [
     },
 ];
 
-const DeliveryPage: React.FC = () => {
+const DeliveryPanelPage: React.FC = () => {
     const [deliveries, setDeliveries] = useState<Delivery[]>([]);
     const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
     const navigate = useNavigate();
@@ -227,4 +227,4 @@ const DeliveryPage: React.FC = () => {
     );
 };
 
-export default DeliveryPage;
+export default DeliveryPanelPage;
