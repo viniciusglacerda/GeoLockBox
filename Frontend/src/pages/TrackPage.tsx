@@ -2,43 +2,11 @@ import React, { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { apiService, Delivery, Telemetry } from "@/services/apiService";
 
 type TrackResponse = {
-  tracking_number: string;
-  status: string;
-  device: {
-    id: string;
-    latitude: number;
-    longitude: number;
-    last_update: string;
-    battery?: number;
-  };
-  delivery: {
-    dest_lat: number;
-    dest_lon: number;
-    geofence_radius?: number;
-    eta_minutes?: number | null;
-  } | null;
-};
-
-const MOCK_TRACKING = "DEMO123";
-
-const mockData: TrackResponse = {
-  tracking_number: MOCK_TRACKING,
-  status: "in_transit",
-  device: {
-    id: "BOX-MOCK-001",
-    latitude: -23.55052,
-    longitude: -46.63331,
-    last_update: new Date().toLocaleString(),
-    battery: 88,
-  },
-  delivery: {
-    dest_lat: -23.5480,
-    dest_lon: -46.6400,
-    geofence_radius: 50,
-    eta_minutes: 12,
-  },
+  delivery: Delivery;
+  telemetry?: Telemetry;
 };
 
 const TrackPage: React.FC = () => {
@@ -52,152 +20,203 @@ const TrackPage: React.FC = () => {
     setError(null);
     setData(null);
 
-    const t = tracking.trim();
-    if (!t) {
-      setError("Insira um número de rastreio válido.");
-      return;
-    }
-
-    // Mock path: se for o tracking de exemplo, usa mock local
-    if (t === MOCK_TRACKING) {
-      setData(mockData);
+    const deliveryId = tracking.trim();
+    if (!deliveryId) {
+      setError("Insira um número de entrega válido.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`/public/track/${encodeURIComponent(t)}`);
-      if (res.status === 404) {
-        setError("Número de rastreio não encontrado.");
+      const deliveries = await apiService.getDeliveries();
+      const delivery = deliveries.find(d => d.id === deliveryId);
+
+      if (!delivery) {
+        setError("Número de entrega não encontrado.");
         setLoading(false);
         return;
       }
-      if (!res.ok) {
-        const txt = await res.text();
-        setError(`Erro: ${res.status} ${txt}`);
-        setLoading(false);
-        return;
+
+      let telemetry: Telemetry | undefined;
+      if (delivery.device_id) {
+        const telemetries = await apiService.getTelemetry(delivery.device_id);
+        telemetry = telemetries.sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )[0];
       }
-      const json: TrackResponse = await res.json();
-      setData(json);
-    } catch (err: any) {
-      setError("Erro na comunicação com o servidor.");
+
+      setData({ delivery, telemetry });
+    } catch (err) {
+      setError("Erro ao buscar informações da entrega.");
     } finally {
       setLoading(false);
     }
   };
 
-  // helper: criar ícone do dispositivo (pequeno círculo com svg)
   const deviceIcon = (locked: boolean) =>
     new L.DivIcon({
-      html: `<div style="width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:${locked ? '#F87171' : '#34D399'};">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/></svg>
-            </div>`,
-      className: "",
+      html: `
+      <div style="
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: ${locked ? '#F87171' : '#34D399'};
+        border: 2px solid white;
+        box-shadow: 0 0 3px rgba(0,0,0,0.5);
+      ">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
+        </svg>
+      </div>
+    `,
+      className: "", // importante: sem classes extras
       iconSize: [36, 36],
-      iconAnchor: [18, 36],
+      iconAnchor: [18, 36], // centraliza o ícone na base
     });
+  const mapPinIcon = new L.DivIcon({
+    html: `
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      background-color:${"grey"};
+      border-radius:50%;
+      box-shadow:0 0 6px rgba(0,0,0,0.4);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
+        <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5
+          c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5
+          14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
+      </svg>
+    </div>
+  `,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+  });
 
-  // botão para carregar demo
-  const handleShowExample = () => {
-    setTracking(MOCK_TRACKING);
-    setData(mockData);
-    setError(null);
-  };
+  const packageIcon = new L.DivIcon({
+    html: `
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      background-color:${"grey"};
+      border-radius:50%;
+      box-shadow:0 0 6px rgba(0,0,0,0.4);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
+        <path d="m7.5 4.27 4.5-2.25 4.5 2.25"></path>
+        <path d="M3 8l9 4 9-4"></path>
+        <path d="M3 8v8l9 4 9-4V8"></path>
+        <path d="M12 12v8"></path>
+      </svg>
+    </div>
+  `,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+  });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Rastreamento de Entrega</h1>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Rastreamento de Entrega</h1>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+      <form onSubmit={handleSubmit} className="flex gap-3 mb-6">
         <input
           type="text"
-          placeholder="Insira o número de rastreio"
+          placeholder="Número da entrega"
           value={tracking}
           onChange={(e) => setTracking(e.target.value)}
-          className="flex-1 border rounded px-3 py-2"
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
         />
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
         >
           {loading ? "Buscando..." : "Localizar"}
         </button>
-
-        botão de exemplo - apenas para demo/local
-        <button
-          type="button"
-          onClick={handleShowExample}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded"
-        >
-          Mostrar exemplo
-        </button>
       </form>
 
-      {error && <div className="text-red-600 mb-4">{error}</div>}
+      {error && <div className="text-red-600 font-medium mb-4">{error}</div>}
 
       {data && (
-        <div className="space-y-4">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-gray-500">Rastreamento</div>
-                <div className="font-medium">{data.tracking_number}</div>
-                <div className="text-sm text-gray-600">Status: {data.status}</div>
-              </div>
-              <div className="text-right text-sm text-gray-600">
-                Última atualização: {data.device.last_update}
-                <br />
-                Bateria: {data.device.battery ?? "—"}%
-                <br />
-                ETA: {data.delivery?.eta_minutes ? `${data.delivery.eta_minutes} min` : "—"}
-              </div>
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow p-5 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-700">
+                Entrega: {data.delivery.order_number}
+              </h2>
+              <p className="text-sm text-gray-500">
+                Status: <span className="font-medium">{data.delivery.status}</span>
+              </p>
+            </div>
+            <div className="text-right text-sm text-gray-600">
+              Última atualização: {data.telemetry?.timestamp ?? "—"}
+              <br />
+              Bateria: {data.telemetry?.battery_level ?? "—"}%
             </div>
           </div>
 
-          <div className="h-96 rounded overflow-hidden shadow">
+          <div className="h-[500px] rounded-xl overflow-hidden shadow">
             <MapContainer
-              center={[data.device.latitude, data.device.longitude]}
+              center={[
+                data.telemetry?.latitude ?? data.delivery.dest_lat ?? 0,
+                data.telemetry?.longitude ?? data.delivery.dest_lon ?? 0,
+              ]}
               zoom={13}
               className="w-full h-full"
-              scrollWheelZoom={true}
+              scrollWheelZoom
             >
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
               />
-              <Marker
-                position={[data.device.latitude, data.device.longitude]}
-                icon={deviceIcon(data.status !== "in_transit" /* example logic */)}
-              >
-                <Popup>
-                  <div>
-                    <strong>{data.device.id}</strong>
-                    <div>Última: {data.device.last_update}</div>
-                  </div>
-                </Popup>
-              </Marker>
 
-              {data.delivery && (
+              {data.telemetry && (
+                <Marker
+                  position={[data.telemetry.latitude, data.telemetry.longitude]}
+                  icon={deviceIcon(data.delivery.status !== "in_transit")}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Dispositivo: {data.delivery.device_id}</strong>
+                      <div>Última atualização: {data.telemetry.timestamp}</div>
+                      <div>Bateria: {data.telemetry.battery_level ?? "—"}%</div>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+
+              {data.delivery.dest_lat && data.delivery.dest_lon && (
                 <>
-                  <Marker position={[data.delivery.dest_lat, data.delivery.dest_lon]}>
+                  <Marker position={[data.delivery.dest_lat, data.delivery.dest_lon]} icon={mapPinIcon}>
                     <Popup>Destino da entrega</Popup>
                   </Marker>
 
-                  <Polyline
-                    positions={[
-                      [data.device.latitude, data.device.longitude],
-                      [data.delivery.dest_lat, data.delivery.dest_lon],
-                    ]}
-                    pathOptions={{ color: "#2563eb", weight: 3 }}
-                  />
+                  {data.telemetry && (
+                    <Polyline
+                      positions={[
+                        [data.telemetry.latitude, data.telemetry.longitude],
+                        [data.delivery.dest_lat, data.delivery.dest_lon],
+                      ]}
+                      pathOptions={{ color: "#2563eb", weight: 4, dashArray: "6,4" }}
+                    />
+                  )}
 
                   {data.delivery.geofence_radius && (
                     <Circle
                       center={[data.delivery.dest_lat, data.delivery.dest_lon]}
                       radius={data.delivery.geofence_radius}
-                      pathOptions={{ color: "#2563eb", fillOpacity: 0.08 }}
+                      pathOptions={{ color: "#2563eb", fillOpacity: 0.1 }}
                     />
                   )}
                 </>
@@ -206,12 +225,6 @@ const TrackPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* {!data && (
-        <div className="mt-4 text-sm text-gray-500">
-          Dica: clique <strong>Mostrar exemplo</strong> para visualizar um rastreamento de demonstração.
-        </div>
-      )} */}
     </div>
   );
 };

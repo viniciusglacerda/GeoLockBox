@@ -26,8 +26,54 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "/leaflet/marker-shadow.png",
 });
 
-const mapPinIcon = new L.DivIcon({ });
-const packageIcon = new L.DivIcon({ });
+const mapPinIcon = new L.DivIcon({
+    html: `
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      background-color:${"grey"};
+      border-radius:50%;
+      box-shadow:0 0 6px rgba(0,0,0,0.4);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
+        <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5
+          c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5
+          14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
+      </svg>
+    </div>
+  `,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+});
+
+const packageIcon = new L.DivIcon({
+    html: `
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      background-color:${"grey"};
+      border-radius:50%;
+      box-shadow:0 0 6px rgba(0,0,0,0.4);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24">
+        <path d="m7.5 4.27 4.5-2.25 4.5 2.25"></path>
+        <path d="M3 8l9 4 9-4"></path>
+        <path d="M3 8v8l9 4 9-4V8"></path>
+        <path d="M12 12v8"></path>
+      </svg>
+    </div>
+  `,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+});
 
 const DeliveryForm = () => {
   const navigate = useNavigate();
