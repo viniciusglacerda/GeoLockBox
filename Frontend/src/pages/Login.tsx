@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { mockService } from "@/services/mockService";
+import { apiService } from "@/services/apiService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,10 +24,7 @@ const Login = () => {
     try {
       setLoading(true);
 
-      const response = await mockService.login({
-        username: email,
-        password: password,
-      });
+      const response = await apiService.login({ email:email, password:password });
 
       if (response && response.token) {
         toast.success(`Bem-vindo, ${response.user.username}!`);
@@ -36,7 +33,7 @@ const Login = () => {
         localStorage.setItem("token", response.token);
 
         if (response.user.role === "admin") navigate("/dashboard");
-        else navigate("/deliveries");
+        else navigate("/delivery-panel");
       } else {
         toast.error("Usuário ou senha inválidos");
       }
