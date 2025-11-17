@@ -1,9 +1,9 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Device } from "@/services/mockService"; // importa o tipo do mockService
+import { Device } from "@/services/apiService";
 
-// Corrige o ícone padrão do Leaflet (evita warnings)
+// Corrige ícones default do Leaflet
 delete (L.Icon.Default as any).prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "/leaflet/marker-icon-2x.png",
@@ -11,12 +11,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "/leaflet/marker-shadow.png",
 });
 
-// Interface de props
 interface MapViewProps {
   devices: Device[];
 }
 
-// Função que gera ícones coloridos baseados no status
+// Gera ícone colorido por status
 const createDeviceIcon = (status: string) => {
   let color = "gray";
   if (status === "active") color = "green";
@@ -49,46 +48,61 @@ const createDeviceIcon = (status: string) => {
 };
 
 const MapView = ({ devices }: MapViewProps) => {
-  const defaultCenter: [number, number] = [-15.7801, -47.9292]; // fallback: Brasília
-  const validDevices = devices.filter((d) => d.geofence); // garante que tem coordenadas
+  // Aceita devices que tenham OU geofence.center OU latitude/longitude
+  const validDevices = devices.filter(
+    (d) =>
+      Array.isArray(d.geofence?.center) ||
+      (typeof d.latitude === "number" && typeof d.longitude === "number")
+  );
+
+  // Center do mapa:  
+  // - Se existir pelo menos 1 device válido → usa o 1º  
+  // - Se não → fallback para Brasília
+  const defaultCenter: [number, number] = [-15.78, -47.93];
+
+  const mapCenter =
+    validDevices.length > 0
+      ? (validDevices[0].geofence?.center ??
+          [validDevices[0].latitude!, validDevices[0].longitude!]) as [
+          number,
+          number
+        ]
+      : defaultCenter;
 
   return (
     <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-md">
       <MapContainer
-        center={defaultCenter}
-        zoom={5}
+        center={mapCenter}
+        zoom={12}
         scrollWheelZoom={true}
         className="w-full h-full"
       >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
-          &copy; <a href="https://carto.com/">CARTO</a>'
+          attribution='&copy; OpenStreetMap & CARTO'
         />
 
-        {validDevices.map((device) => (
-          <Marker
-            key={device.id}
-            position={device.geofence!.center}
-            icon={createDeviceIcon(device.status)}
-          >
-            <Popup>
-              <strong>ID:</strong> {device.id} <br />
-              <strong>Status:</strong>{" "}
-              {device.status === "active"
-                ? "Ativo"
-                : device.status === "unlocked"
-                ? "Destravado"
-                : device.status === "alert"
-                ? "Alerta"
-                : "Inativo"}{" "}
-              <br />
-              <strong>Bateria:</strong> {device.battery_level ?? "--"}% <br />
-              <strong>Localização:</strong>{" "}
-              {device.geofence?.center.join(", ")}
-            </Popup>
-          </Marker>
-        ))}
+        {validDevices.map((device) => {
+          // Prioridade: geofence.center → latitude/longitude
+          const center: [number, number] = device.geofence?.center
+            ? [device.geofence.center[0], device.geofence.center[1]]
+            : [device.latitude!, device.longitude!];
+
+          return (
+            <Marker
+              key={device.id}
+              position={center}
+              icon={createDeviceIcon(device.status)}
+            >
+              <Popup>
+                <strong>ID:</strong> {device.id} <br />
+                <strong>Status:</strong> {device.status} <br />
+                <strong>Bateria:</strong> {device.battery_level ?? "--"}% <br />
+                <strong>Localização:</strong> {center.join(", ")}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

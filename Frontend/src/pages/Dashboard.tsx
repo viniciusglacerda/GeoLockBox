@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockService, Device } from "@/services/mockService";
+import { apiService, Device } from "@/services/apiService";
 import { toast } from "sonner";
 
 const Dashboard = () => {
@@ -22,11 +22,10 @@ const Dashboard = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- Busca os dispositivos da API mock ---
   useEffect(() => {
     const fetchDevices = async () => {
       try {
-        const response = await mockService.getDevices();
+        const response = await apiService.getDevices();
         setDevices(response);
       } catch (error) {
         console.error(error);
@@ -38,7 +37,6 @@ const Dashboard = () => {
     fetchDevices();
   }, []);
 
-  // --- Estatísticas simples (mockadas com base nos devices) ---
   const totalDevices = devices.length;
   const activeDevices = devices.filter((d) => d.status === "active").length;
   const unlockedDevices = devices.filter((d) => d.status === "unlocked").length;
@@ -115,6 +113,8 @@ const Dashboard = () => {
                   {devices.map((device) => (
                     <TableRow key={device.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">{device.id}</TableCell>
+
+                      {/* Status badge */}
                       <TableCell>
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -130,14 +130,20 @@ const Dashboard = () => {
                           {device.status}
                         </span>
                       </TableCell>
+
+                      {/* Localização */}
                       <TableCell>
                         {device.geofence
                           ? `${device.geofence.center[0].toFixed(3)}, ${device.geofence.center[1].toFixed(3)}`
                           : "Sem localização"}
                       </TableCell>
+
+                      {/* Bateria */}
                       <TableCell className="text-muted-foreground">
                         {device.battery_level ?? "--"}%
                       </TableCell>
+
+                      {/* Botão */}
                       <TableCell className="text-right">
                         <Button
                           size="sm"
