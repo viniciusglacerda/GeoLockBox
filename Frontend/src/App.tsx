@@ -7,11 +7,9 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import DeviceDetail from "./pages/DeviceDetail";
 import NotFound from "./pages/NotFound";
-import GeofencingConfigPage from "./pages/GeofencingConfigPage";
 import SettingsPage from "./pages/Settings";
 import TrackPage from "./pages/TrackPage";
 import DeliveryPanelPage from "./pages/DeliveryPanelPage";
-import DeliveriesSettingsPage from "./pages/DeliveriesSettingsPage";
 import Deliveries from "./pages/DeliveriesPage";
 import DeliveryForm from "./pages/DeliveryForm";
 
@@ -30,7 +28,6 @@ const App = () => (
           <Route path="/delivery/:id" element={<DeliveryForm />} />
           <Route path="/delivery-panel" element={<DeliveryPanelPage />} />
           <Route path="/track" element={<TrackPage />} />
-          <Route path="/geofencing-settings" element={<GeofencingConfigPage />} />
           <Route path="/device/:id" element={<DeviceDetail />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
