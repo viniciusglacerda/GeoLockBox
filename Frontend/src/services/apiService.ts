@@ -36,10 +36,10 @@ export interface User {
 export interface Device {
   id: string;
   name: string;
-  latitude: number;
-  longitude: number;
-  status: string;
-  battery_level: number;
+  latitude?: number;
+  longitude?: number;
+  status?: string;
+  battery_level?: number;
   assigned_user_id?: string | null;
   assigned_delivery_id?: string | null;
   geofence?: { center: [number, number]; radius_m: number };
