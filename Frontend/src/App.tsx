@@ -26,7 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/deliveries" element={<Deliveries />} />
           <Route path="/delivery/:id" element={<DeliveryForm />} />
-          <Route path="/delivery-panel" element={<DeliveryPanelPage />} />
+          <Route path="/delivery-panel/:userId" element={<DeliveryPanelPage />} />
           <Route path="/track" element={<TrackPage />} />
           <Route path="/device/:id" element={<DeviceDetail />} />
           <Route path="/settings" element={<SettingsPage />} />

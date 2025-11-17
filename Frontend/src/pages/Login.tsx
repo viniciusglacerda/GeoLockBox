@@ -33,7 +33,7 @@ const Login = () => {
         localStorage.setItem("token", response.token);
 
         if (response.user.role === "admin") navigate("/dashboard");
-        else navigate("/delivery-panel");
+        else navigate("/delivery-panel/" + response.user.id);
       } else {
         toast.error("Usuário ou senha inválidos");
       }
