@@ -20,6 +20,7 @@ const SettingsPage = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [newDevice, setNewDevice] = useState<Partial<Device>>({
+    id: "",
     name: "",
   });
 
@@ -88,6 +89,7 @@ const SettingsPage = () => {
       toast.error("Preencha o nome do dispositivo");
       return;
     }
+
     try {
       const deviceToCreate = {
         ...newDevice,
@@ -106,7 +108,7 @@ const SettingsPage = () => {
 
       await apiService.createDevice(deviceToCreate);
       toast.success("Dispositivo criado!");
-      setNewDevice({ name: "" });
+      setNewDevice({ id: "", name: "" });
       loadDevices();
     } catch {
       toast.error("Erro ao criar dispositivo");
@@ -284,12 +286,18 @@ const SettingsPage = () => {
           <section className="bg-white rounded-xl shadow p-6">
             <h2 className="text-2xl font-semibold mb-4">Gerenciar Dispositivos</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <input
+                className="border rounded p-2"
+                placeholder="ID do dispositivo"
+                value={newDevice.id || ""}
+                onChange={(e) => setNewDevice({ ...newDevice, id: e.target.value })}
+              />
               <input
                 className="border rounded p-2"
                 placeholder="Nome do dispositivo"
                 value={newDevice.name || ""}
-                onChange={(e) => setNewDevice({ name: e.target.value })}
+                onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })}
               />
               <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleCreateDevice}>
                 Criar
@@ -331,6 +339,34 @@ const SettingsPage = () => {
                 ))}
               </tbody>
             </table>
+
+            {editingDevice && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+                <div className="bg-white p-6 rounded-lg shadow-lg w-96 space-y-4 animate-fadeIn">
+                  <h3 className="text-xl font-semibold">Editar Dispositivo</h3>
+
+                  <input
+                    className="border rounded p-2 w-full bg-gray-100 text-gray-600"
+                    placeholder="ID do dispositivo"
+                    value={editingDevice.id}
+                    readOnly
+                  />
+                  <input
+                    className="border rounded p-2 w-full"
+                    placeholder="Nome"
+                    value={editingDevice.name}
+                    onChange={(e) => setEditingDevice({ ...editingDevice, name: e.target.value })}
+                  />
+
+                  <div className="flex justify-end gap-3">
+                    <Button onClick={() => setEditingDevice(null)}>Cancelar</Button>
+                    <Button className="bg-blue-600 text-white" onClick={handleUpdateDevice}>
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
       </main>

@@ -39,6 +39,8 @@ export interface Device {
   latitude?: number;
   longitude?: number;
   status?: string;
+  active?: boolean;
+  speed?: number;
   battery_level?: number;
   assigned_user_id?: string | null;
   assigned_delivery_id?: string | null;

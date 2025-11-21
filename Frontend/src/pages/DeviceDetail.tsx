@@ -26,17 +26,36 @@ const DeviceDetail = () => {
   const [eventLogs, setEventLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isLocked = device?.status === "locked";
+  const isLocked = device?.active ? false : true;
 
   // --- Ícone do mapa ---
   const lucideIcon = useMemo(() => {
     return new L.DivIcon({
       html: ReactDOMServer.renderToString(
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
-          style={{ backgroundColor: isLocked ? "#F87171" : "#34D399" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "30px",
+            height: "30px",
+            backgroundColor: isLocked ? "#F87171" : "#34D399",
+            borderRadius: "50%",
+            boxShadow: "0 0 6px rgba(0,0,0,0.4)"
+          }}
         >
-          <MapPin className="w-6 h-6" style={{ color: "white" }} />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            fill="white"
+            viewBox="0 0 24 24"
+          >
+            <path d="m7.5 4.27 4.5-2.25 4.5 2.25"></path>
+            <path d="M3 8l9 4 9-4"></path>
+            <path d="M3 8v8l9 4 9-4V8"></path>
+            <path d="M12 12v8"></path>
+          </svg>
         </div>
       ),
       iconSize: [40, 40],
@@ -44,14 +63,53 @@ const DeviceDetail = () => {
     });
   }, [isLocked]);
 
+  const mapPinIcon = useMemo(() => {
+    return new L.DivIcon({
+      className: "custom-map-pin", // evita fundo branco
+      html: ReactDOMServer.renderToString(
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "30px",
+            height: "30px",
+            backgroundColor: "grey",
+            borderRadius: "50%",
+            boxShadow: "0 0 6px rgba(0,0,0,0.4)",
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            fill="white"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5
+            c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5
+            14.5 7.62 14.5 9 13.38 11.5 12 11.5z"
+            />
+          </svg>
+        </div>
+      ),
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
+  }, []);
+
+
   // --- Centralizar mapa quando device muda ---
   const FitMapView = () => {
     const map = useMap();
     useEffect(() => {
       if (device?.latitude && device?.longitude) {
-        map.setView([device.latitude, device.longitude], 16);
+        map.flyTo([device.latitude, device.longitude], map.getZoom(), {
+          duration: 0.5
+        });
       }
-    }, [device, map]);
+    }, [device?.latitude, device?.longitude]);
+
     return null;
   };
 
@@ -99,12 +157,29 @@ const DeviceDetail = () => {
     fetchData();
   }, [id]);
 
+  // Atualização automática da posição do device a cada 10s
+  useEffect(() => {
+    if (!device) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const updated = await apiService.getDevice(device.id);
+        setDevice(updated);
+      } catch (err) {
+        console.error("Erro ao atualizar localização:", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [device]);
+
+
   // --- Handlers ---
   const handleLock = async () => {
     if (!device) return;
     try {
-      await apiService.patchDevice(device.id, { status: "locked" });
-      setDevice({ ...device, status: "locked" });
+      await apiService.patchDevice(device.id, { active: false });
+      setDevice({ ...device, active: false });
       toast.success("Trava bloqueada com sucesso!");
     } catch {
       toast.error("Falha ao bloquear trava.");
@@ -114,8 +189,8 @@ const DeviceDetail = () => {
   const handleUnlock = async () => {
     if (!device) return;
     try {
-      await apiService.patchDevice(device.id, { status: "unlocked" });
-      setDevice({ ...device, status: "unlocked" });
+      await apiService.patchDevice(device.id, { active: true });
+      setDevice({ ...device, active: true });
       toast.success("Trava desbloqueada com sucesso!");
     } catch {
       toast.error("Falha ao desbloquear trava.");
@@ -235,13 +310,21 @@ const DeviceDetail = () => {
                   </Popup>
                 </Marker>
 
-                {/* Geofence da entrega */}
+                {/* Geofence e Marcador da entrega */}
                 {delivery?.dest_lat && delivery?.dest_lon && delivery.geofence_radius && (
-                  <Circle
-                    center={[delivery.dest_lat, delivery.dest_lon]}
-                    radius={delivery.geofence_radius}
-                    pathOptions={{ color: "blue", fillOpacity: 0.1 }}
-                  />
+                  <>
+                    <Marker position={[delivery?.dest_lat || 0, delivery?.dest_lon || 0]} icon={mapPinIcon}>
+                      <Popup>
+                        Order: {delivery?.order_number} - Geofencing: {delivery?.geofence_radius} m
+                      </Popup>
+                    </Marker>
+
+                    < Circle
+                      center={[delivery.dest_lat, delivery.dest_lon]}
+                      radius={delivery.geofence_radius}
+                      pathOptions={{ color: "blue", fillOpacity: 0.1 }}
+                    />
+                  </>
                 )}
 
                 {delivery?.dest_lat && delivery?.dest_lon && (
@@ -304,8 +387,8 @@ const DeviceDetail = () => {
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded text-xs ${log.result === "Sucesso"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-yellow-100 text-yellow-600"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-yellow-100 text-yellow-600"
                             }`}
                         >
                           {log.result}
