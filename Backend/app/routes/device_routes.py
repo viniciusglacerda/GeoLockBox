@@ -1,10 +1,13 @@
 from typing import List
 from fastapi import Depends, APIRouter
 from sqlmodel import select, Session
+from datetime import datetime, timezone
 
 from app.core.database import get_session
 from app.utils.helpers import generate_id, get_or_404
+from app.services.lock_services import is_in_geofence
 from app.models.device import Device
+from app.models.delivery import Delivery
 from app.schemas.device_schema import *
 
 
@@ -55,6 +58,9 @@ def patch_device(device_id: str, device: DeviceUpdate, session: Session = Depend
     existing = get_or_404(session, Device, device_id)
     for k, v in device.model_dump(exclude_unset=True).items():
         setattr(existing, k, v)
+
+    existing.last_update = datetime.now(timezone.utc)
+
     session.add(existing)
     session.commit()
     session.refresh(existing)
@@ -67,3 +73,21 @@ def delete_device(device_id: str, session: Session = Depends(get_session)):
     session.delete(existing)
     session.commit()
     return
+
+
+@router.get("/{device_id}/lock")
+def get_device(device_id: str, session: Session = Depends(get_session)):
+    device = get_or_404(session, Device, device_id)
+
+    delivery = session.exec(
+        select(Delivery).where(Delivery.device_id == device_id)
+    ).first()
+
+    if not delivery:
+        return {"lock": "close"}
+
+    in_area = is_in_geofence(device, delivery)
+
+    lock_state = "open" if in_area or device.active else "close"
+
+    return {"lock": lock_state}
