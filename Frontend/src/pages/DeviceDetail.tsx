@@ -16,14 +16,14 @@ import { MapContainer, TileLayer, Marker, Circle, Popup, useMap, Polyline } from
 import L from "leaflet";
 import ReactDOMServer from "react-dom/server";
 
-import { apiService, Device, Delivery, Log } from "@/services/apiService";
+import { apiService, Device, Delivery, Telemetry } from "@/services/apiService";
 
 const DeviceDetail = () => {
   const { id } = useParams<{ id: string }>();
 
   const [device, setDevice] = useState<Device | null>(null);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
-  const [eventLogs, setEventLogs] = useState<Log[]>([]);
+  const [telemetries, setTelemetries] = useState<Telemetry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isLocked = device?.active ? false : true;
@@ -113,21 +113,6 @@ const DeviceDetail = () => {
     return null;
   };
 
-  // --- Adicionar log ---
-  const addLog = async (event: string, result: string) => {
-    try {
-      if (!device) return;
-      const newLog = await apiService.createLog({
-        id: device.id,
-        event,
-        result,
-      });
-      setEventLogs((prev) => [newLog, ...prev]);
-    } catch {
-      toast.error("Falha ao registrar log.");
-    }
-  };
-
   // --- Buscar device + delivery + logs ---
   useEffect(() => {
     const fetchData = async () => {
@@ -142,10 +127,10 @@ const DeviceDetail = () => {
         const linkedDelivery = deliveries.find((d) => d.device_id === dev.id);
         setDelivery(linkedDelivery || null);
 
-        // --- Buscar logs do device ---
-        const logs = await apiService.getLogs();
-        const deviceLogs = logs.filter((l) => l.id === dev.id || l.id === dev.id);
-        setEventLogs(deviceLogs.reverse());
+        const t = await apiService.getTelemetry(dev.id);
+        setTelemetries(t.sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        ));
       } catch (err) {
         console.error(err);
         toast.error("Erro ao buscar informações do dispositivo.");
@@ -367,33 +352,27 @@ const DeviceDetail = () => {
             </Button>
           </div>
 
-          {/* Logs */}
           <div className="bg-card rounded-lg shadow-md p-6 mt-6">
-            <h2 className="text-xl font-semibold mb-4">Logs Recentes</h2>
+            <h2 className="text-xl font-semibold mb-4">Histórico de Telemetria</h2>
             <div className="max-h-64 overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Evento</TableHead>
                     <TableHead>Data</TableHead>
-                    <TableHead>Resultado</TableHead>
+                    <TableHead>Latitude</TableHead>
+                    <TableHead>Longitude</TableHead>
+                    <TableHead>Bateria</TableHead>
+                    <TableHead>Velocidade</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {eventLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{log.event}</TableCell>
-                      <TableCell>{log.created_at ?? "—"}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${log.result === "Sucesso"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-600"
-                            }`}
-                        >
-                          {log.result}
-                        </span>
-                      </TableCell>
+                  {telemetries.map((t) => (
+                    <TableRow key={t.id}>
+                      <TableCell>{t.timestamp}</TableCell>
+                      <TableCell className="font-mono">{t.latitude}</TableCell>
+                      <TableCell className="font-mono">{t.longitude}</TableCell>
+                      <TableCell>{t.battery_level ?? "—"}%</TableCell>
+                      <TableCell>{t.speed ?? "—"} km/h</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
