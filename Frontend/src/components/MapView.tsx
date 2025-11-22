@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useMap } from "react-leaflet";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -45,6 +47,18 @@ const createDeviceIcon = (status: string) => {
   });
 };
 
+const MapCenterUpdater = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (center) {
+      map.setView(center, map.getZoom());
+    }
+  }, [center, map]);
+
+  return null;
+};
+
 const MapView = ({ devices }: MapViewProps) => {
   const validDevices = devices.filter(
     (d) =>
@@ -57,10 +71,7 @@ const MapView = ({ devices }: MapViewProps) => {
   const mapCenter =
     validDevices.length > 0
       ? (validDevices[0].geofence?.center ??
-          [validDevices[0].latitude!, validDevices[0].longitude!]) as [
-          number,
-          number
-        ]
+        [validDevices[0].latitude!, validDevices[0].longitude!]) as [number, number]
       : defaultCenter;
 
   return (
@@ -75,6 +86,8 @@ const MapView = ({ devices }: MapViewProps) => {
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap & CARTO'
         />
+
+        <MapCenterUpdater center={mapCenter} />
 
         {validDevices.map((device) => {
           const center: [number, number] = device.geofence?.center
@@ -97,6 +110,7 @@ const MapView = ({ devices }: MapViewProps) => {
           );
         })}
       </MapContainer>
+
     </div>
   );
 };
