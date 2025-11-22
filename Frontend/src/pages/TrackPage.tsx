@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { apiService, Delivery, Telemetry } from "@/services/apiService";
+import { apiService, Delivery, Device } from "@/services/apiService";
 
 type TrackResponse = {
   delivery: Delivery;
-  telemetry?: Telemetry;
+  device?: Device;
 };
 
 const TrackPage: React.FC = () => {
@@ -37,15 +37,12 @@ const TrackPage: React.FC = () => {
         return;
       }
 
-      let telemetry: Telemetry | undefined;
+      let device: Device | undefined;
       if (delivery.device_id) {
-        const telemetries = await apiService.getTelemetry(delivery.device_id);
-        telemetry = telemetries.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )[0];
+        device = await apiService.getDevice(delivery.device_id);
       }
 
-      setData({ delivery, telemetry });
+      setData({ delivery, device });
     } catch (err) {
       setError("Erro ao buscar informações da entrega.");
     } finally {
@@ -53,29 +50,6 @@ const TrackPage: React.FC = () => {
     }
   };
 
-  const deviceIcon = (locked: boolean) =>
-    new L.DivIcon({
-      html: `
-      <div style="
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: ${locked ? '#F87171' : '#34D399'};
-        border: 2px solid white;
-        box-shadow: 0 0 3px rgba(0,0,0,0.5);
-      ">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
-        </svg>
-      </div>
-    `,
-      className: "", // importante: sem classes extras
-      iconSize: [36, 36],
-      iconAnchor: [18, 36], // centraliza o ícone na base
-    });
   const mapPinIcon = new L.DivIcon({
     html: `
     <div style="
@@ -159,18 +133,13 @@ const TrackPage: React.FC = () => {
                 Status: <span className="font-medium">{data.delivery.status}</span>
               </p>
             </div>
-            <div className="text-right text-sm text-gray-600">
-              Última atualização: {data.telemetry?.timestamp ?? "—"}
-              <br />
-              Bateria: {data.telemetry?.battery_level ?? "—"}%
-            </div>
           </div>
 
           <div className="h-[500px] rounded-xl overflow-hidden shadow">
             <MapContainer
               center={[
-                data.telemetry?.latitude ?? data.delivery.dest_lat ?? 0,
-                data.telemetry?.longitude ?? data.delivery.dest_lon ?? 0,
+                data.device?.latitude ?? data.delivery.dest_lat ?? 0,
+                data.device?.longitude ?? data.delivery.dest_lon ?? 0,
               ]}
               zoom={13}
               className="w-full h-full"
@@ -178,19 +147,18 @@ const TrackPage: React.FC = () => {
             >
               <TileLayer
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+                attribution='&copy; OpenStreetMap & CARTO'
               />
 
-              {data.telemetry && (
+              {data.device && data.device.latitude && data.device.longitude && (
                 <Marker
-                  position={[data.telemetry.latitude, data.telemetry.longitude]}
-                  icon={deviceIcon(data.delivery.status !== "in_transit")}
+                  position={[data.device.latitude, data.device.longitude]}
+                  icon={packageIcon}
                 >
                   <Popup>
                     <div>
                       <strong>Dispositivo: {data.delivery.device_id}</strong>
-                      <div>Última atualização: {data.telemetry.timestamp}</div>
-                      <div>Bateria: {data.telemetry.battery_level ?? "—"}%</div>
+                      <div>Bateria: {data.device.battery_level ?? "—"}%</div>
                     </div>
                   </Popup>
                 </Marker>
@@ -198,14 +166,17 @@ const TrackPage: React.FC = () => {
 
               {data.delivery.dest_lat && data.delivery.dest_lon && (
                 <>
-                  <Marker position={[data.delivery.dest_lat, data.delivery.dest_lon]} icon={mapPinIcon}>
+                  <Marker
+                    position={[data.delivery.dest_lat, data.delivery.dest_lon]}
+                    icon={mapPinIcon}
+                  >
                     <Popup>Destino da entrega</Popup>
                   </Marker>
 
-                  {data.telemetry && (
+                  {data.device && (
                     <Polyline
                       positions={[
-                        [data.telemetry.latitude, data.telemetry.longitude],
+                        [data.device.latitude!, data.device.longitude!],
                         [data.delivery.dest_lat, data.delivery.dest_lon],
                       ]}
                       pathOptions={{ color: "#2563eb", weight: 4, dashArray: "6,4" }}

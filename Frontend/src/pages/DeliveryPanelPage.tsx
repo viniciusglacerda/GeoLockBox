@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Truck, MapPin, Ruler, Unlock, X, LogOut } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { apiService, Delivery, Telemetry, Device } from "@/services/apiService";
+import { apiService, Delivery, Device } from "@/services/apiService";
 
 const DeliveryPanelPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [telemetries, setTelemetries] = useState<Record<string, Telemetry>>({});
   const [devices, setDevices] = useState<Record<string, Device>>({});
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const navigate = useNavigate();
@@ -20,34 +19,20 @@ const DeliveryPanelPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const allDeliveries = await apiService.getDeliveries();
-
         const userDeliveries = allDeliveries.filter(d => d.driver_id === userId);
+
         setDeliveries(userDeliveries);
 
-        const devicesData = await apiService.getDevices();
-        const devicesMap: Record<string, Device> = {};
-        devicesData.forEach(d => (devicesMap[d.id] = d));
-        setDevices(devicesMap);
+        const allDevices = await apiService.getDevices();
 
-        const telemetryPromises = userDeliveries
-          .filter(d => d.device_id)
-          .map(d => apiService.getTelemetry(d.device_id!));
-        const telemetryResults = await Promise.all(telemetryPromises);
-        const telemetryMap: Record<string, Telemetry> = {};
-        telemetryResults.forEach((tArray, i) => {
-          const deviceId = userDeliveries[i].device_id;
-          if (deviceId && tArray.length > 0) {
-            const latest = tArray.sort(
-              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-            )[0];
-            telemetryMap[deviceId] = latest;
-          }
-        });
-        setTelemetries(telemetryMap);
+        const deviceMap: Record<string, Device> = {};
+        allDevices.forEach(dev => (deviceMap[dev.id] = dev));
+        setDevices(deviceMap);
       } catch (err) {
-        console.error("Erro ao buscar entregas ou dispositivos:", err);
+        console.error("Erro ao buscar dados:", err);
       }
     };
+
     fetchData();
   }, [userId]);
 
@@ -66,20 +51,40 @@ const DeliveryPanelPage: React.FC = () => {
     }
   };
 
-  const truckIcon = (status?: string) =>
-    new L.DivIcon({
-      html: `<div style="
-          width:30px;height:30px;border-radius:50%;
-          background:${status === "unlocked" ? "#22c55e" : status === "arrived" ? "#3b82f6" : "#facc15"};
-          display:flex;align-items:center;justify-content:center;
-          box-shadow:0 0 4px rgba(0,0,0,0.3);">
+  const deviceIcon = new L.DivIcon({
+    html: `
+      <div style="
+        width:32px;height:32px;border-radius:50%;
+        background:#3b82f6;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 6px rgba(0,0,0,0.4);">
         <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
-          <path d="M3 13V6a1 1 0 011-1h10v8H3zm11 0V5h4l3 3v5h-7zM6 17a2 2 0 100-4 2 2 0 000 4zm10 0a2 2 0 100-4 2 2 0 000 4z"/>
+          <path d="m7.5 4.27 4.5-2.25 4.5 2.25"></path>
+          <path d="M3 8l9 4 9-4"></path>
+          <path d="M3 8v8l9 4 9-4V8"></path>
+          <path d="M12 12v8"></path>
         </svg>
-      </div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-    });
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+
+  const destinationIcon = new L.DivIcon({
+    html: `
+      <div style="
+        width:32px;height:32px;border-radius:50%;
+        background:#22c55e;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 0 6px rgba(0,0,0,0.4);">
+        <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+          <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7z"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -106,15 +111,20 @@ const DeliveryPanelPage: React.FC = () => {
           >
             <div>
               <h2 className="font-semibold text-gray-800">{delivery.device_id}</h2>
-              <div className="flex items-center text-gray-600 text-sm gap-1">
-                <MapPin size={16} />
-                {`${delivery.address_street}, ${delivery.address_number}, ${delivery.address_city} - ${delivery.address_state}`}
-              </div>
+              <p className="text-sm text-gray-500">
+                {delivery.address_street}, {delivery.address_number}, {delivery.address_city} - {delivery.address_state}
+              </p>
             </div>
+
             <div className="flex flex-col items-end">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
-                {delivery.status === "unlocked" ? "Destravado" : delivery.status === "arrived" ? "Chegou" : "Em trânsito"}
+                {delivery.status === "unlocked"
+                  ? "Destravado"
+                  : delivery.status === "arrived"
+                    ? "Chegou"
+                    : "Em trânsito"}
               </span>
+
               <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                 <Ruler size={14} /> {delivery.geofence_radius ?? 0}m
               </div>
@@ -130,24 +140,41 @@ const DeliveryPanelPage: React.FC = () => {
               <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
                 <Truck className="text-blue-600" /> {selectedDelivery.device_id}
               </DialogTitle>
-              <Button variant="ghost" size="icon" onClick={() => setSelectedDelivery(null)} className="hover:bg-gray-100">
+              <Button variant="ghost" size="icon" onClick={() => setSelectedDelivery(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </DialogHeader>
 
             <div className="px-4 py-3 text-sm text-gray-700 space-y-1 border-b">
-              <p><MapPin className="inline w-4 h-4 mr-1" /> {selectedDelivery.address_street}, {selectedDelivery.address_number}, {selectedDelivery.address_city} - {selectedDelivery.address_state}</p>
-              <p><Ruler className="inline w-4 h-4 mr-1" /> Raio de geofence: {selectedDelivery.geofence_radius ?? "—"} m</p>
+              <p>
+                <MapPin className="inline w-4 h-4 mr-1" />
+                {selectedDelivery.address_street}, {selectedDelivery.address_number},{" "}
+                {selectedDelivery.address_city} - {selectedDelivery.address_state}
+              </p>
+
+              <p>
+                Bateria:{" "}
+                {devices[selectedDelivery.device_id || 0]?.battery_level ?? "—"}%
+              </p>
+
+              <p>
+                <Ruler className="inline w-4 h-4 mr-1" /> Raio:{" "}
+                {selectedDelivery.geofence_radius ?? "—"}m
+              </p>
             </div>
 
             <div className="h-80 rounded-b-xl overflow-hidden">
               <MapContainer
                 center={[
-                  telemetries[selectedDelivery.device_id || 0]?.latitude ?? selectedDelivery.dest_lat ?? 0,
-                  telemetries[selectedDelivery.device_id || 0]?.longitude ?? selectedDelivery.dest_lon ?? 0,
+                  devices[selectedDelivery.device_id || 0]?.latitude ??
+                  selectedDelivery.dest_lat ??
+                  0,
+                  devices[selectedDelivery.device_id || 0]?.longitude ??
+                  selectedDelivery.dest_lon ??
+                  0,
                 ]}
                 zoom={15}
-                className="w-full h-full z-50"
+                className="w-full h-full"
                 scrollWheelZoom={false}
               >
                 <TileLayer
@@ -155,19 +182,19 @@ const DeliveryPanelPage: React.FC = () => {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
                 />
 
-                {telemetries[selectedDelivery.device_id || 0] && (
+                {devices[selectedDelivery.device_id || 0] && (
                   <Marker
                     position={[
-                      telemetries[selectedDelivery.device_id || 0].latitude,
-                      telemetries[selectedDelivery.device_id || 0].longitude,
+                      devices[selectedDelivery.device_id || 0].latitude!,
+                      devices[selectedDelivery.device_id || 0].longitude!,
                     ]}
-                    icon={truckIcon(selectedDelivery.status)}
+                    icon={deviceIcon}
                   >
                     <Popup>
-                      <div>
+                      <div className="space-y-1">
                         <strong>Dispositivo: {selectedDelivery.device_id}</strong>
-                        <div>Bateria: {telemetries[selectedDelivery.device_id || 0].battery_level ?? "—"}%</div>
-                        <div>Última atualização: {telemetries[selectedDelivery.device_id || 0].timestamp}</div>
+                        <div>Bateria: {devices[selectedDelivery.device_id || 0].battery_level ?? "—"}%</div>
+                        <div>Velocidade: {devices[selectedDelivery.device_id || 0].speed ?? "—"} km/h</div>
                       </div>
                     </Popup>
                   </Marker>
@@ -177,26 +204,44 @@ const DeliveryPanelPage: React.FC = () => {
                   <>
                     <Marker
                       position={[selectedDelivery.dest_lat, selectedDelivery.dest_lon]}
-                      icon={truckIcon(selectedDelivery.status)}
+                      icon={destinationIcon}
                     >
-                      <Popup>Destino da entrega</Popup>
+                      <Popup>
+                        <div className="space-y-1">
+                          <strong>Destino da entrega</strong>
+                          <div>
+                            {selectedDelivery.address_street}, {selectedDelivery.address_number}<br />
+                            {selectedDelivery.address_city} - {selectedDelivery.address_state}
+                          </div>
+                          <div>Raio: {selectedDelivery.geofence_radius}m</div>
+                        </div>
+                      </Popup>
                     </Marker>
 
                     <Circle
                       center={[selectedDelivery.dest_lat, selectedDelivery.dest_lon]}
                       radius={selectedDelivery.geofence_radius ?? 0}
                       pathOptions={{
-                        color:
-                          selectedDelivery.status === "unlocked"
-                            ? "#22c55e"
-                            : selectedDelivery.status === "arrived"
-                              ? "#3b82f6"
-                              : "#facc15",
+                        color: "#22c55e",
                         fillOpacity: 0.15,
                       }}
                     />
+
+                    {devices[selectedDelivery.device_id  || 0] && (
+                      <Polyline
+                        positions={[
+                          [
+                            devices[selectedDelivery.device_id || 0].latitude!,
+                            devices[selectedDelivery.device_id || 0].longitude!,
+                          ],
+                          [selectedDelivery.dest_lat, selectedDelivery.dest_lon],
+                        ]}
+                        pathOptions={{ color: "#3b82f6", opacity: 0.6, weight: 3 }}
+                      />
+                    )}
                   </>
                 )}
+
               </MapContainer>
             </div>
           </DialogContent>
