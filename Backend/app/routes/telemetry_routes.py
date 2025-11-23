@@ -11,7 +11,7 @@ from app.schemas.telemetry_schemas import *
 router = APIRouter()
 
 
-@router.post("", response_model=TelemetryRead, status_code=201)
+@router.post("", status_code=201)
 def create_telemetry(tel: TelemetryCreate, session: Session = Depends(get_session)):
     tel_id = tel.id or generate_id("TEL")
     db_tel = Telemetry(id=tel_id, **tel.model_dump(exclude={"id"}, exclude_none=True))
